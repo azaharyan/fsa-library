@@ -6,24 +6,27 @@
 #include <map>
 #include <iostream>
 #include <cassert>
+#include <utility>
+#include <limits.h>
 
+template<typename T>
 class DFSA
 {
 public:
 	class StatesIterator
 	{
 	public:
-		StatesIterator(DFSA const*, bool = false);
+		StatesIterator(DFSA<T> const*, bool = false);
 		int operator*() const;
 		StatesIterator& operator++();
 		bool operator!=(const StatesIterator&) const;
 
 	private:
-		DFSA const *a;
+		DFSA<T> const *a;
 		int currentStateIndex;
 	};
 
-private:
+public:
 	struct state;
 public:
 	class SymbolIterator
@@ -42,7 +45,7 @@ private:
 	struct transitionProxy
 	{
 		transitionProxy(state*, char);
-		void operator=(unsigned int);
+		void operator=(T);
 		operator unsigned int () const;
 	private:
 		state *s;
@@ -52,49 +55,80 @@ private:
 	struct state
 	{
 		friend class transitionProxy;
-		friend class DFSA;
+		friend class DFSA<T>;
+
+		state(const state&);
+		state& operator=(const state&);
+
 		transitionProxy operator [] (char);
-		unsigned int operator [](char) const;
+		T operator [](char) const;
 		SymbolIterator begin() const;
 		SymbolIterator end() const;
 		bool final() const;
 
+		T getLabel() const
+		{
+			return this->label;
+		}
+
 	private:
-		state (DFSA*);
+		state(DFSA<T>*);
 		bool isFinal;
-		int label;
+		T label;
 
 		std::map<char, unsigned int> transitions;
-		DFSA *a;
+		DFSA<T> *a;
 	};
 
 public:
+	DFSA(T = T());
+	DFSA(const DFSA<T>&);
+	DFSA<T>& operator=(const DFSA<T>&);
 
-	DFSA(unsigned int = 0);
+	void setFinalState(T);
+	void addTransition(T, T, char);
 
-	void setFinalState(unsigned int);
-	void addTransition(unsigned int, unsigned int, char);
+	state& operator[] (T);
+	const state& operator[] (T) const;
 
-	state& operator[] (unsigned int);
-	const state& operator[] (unsigned int) const;
+	T toState(T, char);
 
-	unsigned int toState(unsigned int, char);
-
-	bool hasSymbol(unsigned int, char);
+	bool hasSymbol(T, char) const;
 
 	StatesIterator begin() const;
 	StatesIterator end() const;
 
-	bool readsWord(const std::string&, unsigned int, unsigned int) const;
+	unsigned int getInitialState() const
+	{
+		return this->initialState;
+	}
+
+	bool readsWord(const std::string&, T, unsigned int = 0) const;
+	DFSA<T> complement();
+	void print() const;
+	
+	void setString(std::string& str)
+	{
+		this->currentString = str;
+	}
+
+	std::string getCurrentString() const
+	{
+		return this->currentString;
+	}
 private:
 	std::vector<state> table;
 
-	std::map<int, int> labelToIndex;
-	unsigned int initialState;
+	std::map<T, int> labelToIndex;
+	T initialState;
+	std::string currentString;
 
-	unsigned int indexOf(unsigned int);
-	unsigned int indexOf(unsigned int) const;
-	unsigned int labelOf(unsigned int) const;
+	unsigned int indexOf(T);
+	unsigned int indexOf(T) const;
+	T labelOf(unsigned int) const;
+
+	void getAlphabet(T,std::vector<char>&) const;
 };
 
+#include "fsa.hpp"
 #endif
